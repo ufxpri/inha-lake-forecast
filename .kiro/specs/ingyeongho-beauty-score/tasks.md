@@ -1,204 +1,282 @@
 # Implementation Plan
 
 - [x] 1. Set up project infrastructure and core dependencies
-  - Create project directory structure for Airflow DAGs, FastAPI app, and static files
-  - Set up Docker Compose configuration for Airflow, PostgreSQL, and Redis
-  - Configure Python virtual environment and install core dependencies (FastAPI, Airflow, Redis, PostgreSQL drivers)
-  - Create basic configuration files and environment variables setup
+  - Docker Compose configuration with Airflow, PostgreSQL, and Redis is complete
+  - Environment variables configured in .env file
+  - Airflow directories (dags, logs, plugins, config) are set up
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 2. Implement basic FastAPI server with HTMX interface
-  - [ ] 2.1 Create FastAPI application structure with Jinja2 templates
-    - Set up FastAPI app with static file serving and template rendering
-    - Create base HTML template with HTMX and Tailwind CSS integration
-    - Implement basic routing structure for main dashboard and API endpoints
-    - _Requirements: 6.1, 6.2, 6.4_
+- [x] 2. Create FastAPI web application structure
 
-  - [ ] 2.2 Implement Redis connection and cache utilities
-    - Create Redis connection pool and basic cache operations
-    - Implement cache key management and TTL handling
-    - Add cache fallback mechanisms for when Redis is unavailable
-    - _Requirements: 10.2, 10.4_
+
+
+  - [x] 2.1 Create FastAPI application directory structure and dependencies
+
+
+    - Create `app/` directory with subdirectories: main.py, models/, templates/, static/
+    - Create requirements.txt with FastAPI, Jinja2, Redis, psycopg2, Pillow, and transformers
+    - Set up basic FastAPI app with CORS middleware, static file mounting, and Jinja2 templates
+    - Create database connection utilities for PostgreSQL
+    - Create Redis connection utilities for caching
+    - _Requirements: 6.2, 8.4, 10.1, 10.2, 10.4_
+
+  - [x] 2.2 Implement database schema initialization
+
+
+    - Create SQL schema file for user_uploads table with proper indexes
+    - Implement database initialization script to create tables on startup
+    - Add connection pooling configuration for PostgreSQL
+    - _Requirements: 10.1, 10.5_
 
   - [ ]* 2.3 Write property test for cache data freshness
     - **Property 9: Cache Data Freshness**
     - **Validates: Requirements 10.4**
 
-  - [ ] 2.4 Create main dashboard template with HTMX components
-    - Design responsive layout with hero section, forecast, and calendar areas
-    - Implement HTMX attributes for dynamic content loading
-    - Add Tailwind CSS styling for mobile and desktop responsiveness
+- [x] 3. Implement core web interface with HTMX
+
+
+
+
+
+
+
+
+  - [x] 3.1 Create base HTML templates with HTMX and Tailwind CSS
+
+    - Create base.html template with HTMX library (via CDN) and Tailwind CSS (via CDN)
+    - Create index.html with hero section for beauty score display
+    - Add responsive layout structure for mobile and desktop
     - _Requirements: 6.1, 6.4, 6.5_
 
-- [ ] 3. Implement core API endpoints for data serving
-  - [ ] 3.1 Create current score API endpoint
-    - Implement `/score` endpoint to serve current beauty score from Redis cache
-    - Add status message mapping based on score ranges
-    - Handle cache miss scenarios with appropriate fallbacks
-    - _Requirements: 1.1, 1.2_
 
-  - [ ]* 3.2 Write property test for score range validity
+  - [x] 3.2 Implement main dashboard API endpoints
+
+    - Create GET / endpoint to render main dashboard page
+    - Implement GET /score endpoint to return current score HTML partial from Redis
+    - Add GET /api/current-score endpoint for JSON score data
+    - Implement fallback logic when Redis cache is empty
+    - _Requirements: 1.1, 1.2, 6.2, 7.2_
+
+
+  - [x] 3.3 Add hourly forecast display
+
+    - Create GET /api/hourly-forecast endpoint to serve hourly predictions
+    - Implement HTML partial template for hourly forecast grid
+    - Add "Best" badge highlighting logic for highest score period
+    - _Requirements: 2.1, 2.2_
+
+  - [ ]* 3.4 Write property test for score range validity
     - **Property 1: Score Range Validity**
     - **Validates: Requirements 1.1**
 
-  - [ ]* 3.3 Write property test for status message mapping
+  - [x] 3.5 Write property test for status message mapping
+
+
+
+
     - **Property 2: Status Message Mapping**
     - **Validates: Requirements 1.2**
 
-  - [ ] 3.4 Create hourly forecast API endpoint
-    - Implement `/api/hourly-forecast` endpoint to serve forecast data from cache
-    - Add best time highlighting logic for highest score periods
-    - Format data for HTMX consumption with proper HTML structure
-    - _Requirements: 2.1, 2.2_
+- [x] 4. Create Weather ETL Airflow DAG
 
-  - [ ]* 3.5 Write property test for hourly forecast completeness
+
+
+
+
+  - [x] 4.1 Implement Weather ETL DAG structure
+
+    - Create `airflow/dags/weather_etl_dag.py` with hourly schedule (@hourly)
+    - Define DAG with proper default_args (retries, retry_delay, email_on_failure)
+    - Set up task dependencies using >> operator
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+
+  - [x] 4.2 Implement weather data fetching tasks
+
+    - Create PythonOperator task to fetch Korea Meteorological Administration API data
+    - Create PythonOperator task to fetch Korea Environment Corporation air quality data
+    - Implement basic data validation and error handling with try-except blocks
+    - Store raw data in XCom for downstream tasks
+    - _Requirements: 4.1, 4.2, 7.1_
+
+
+
+  - [x] 4.3 Implement beauty score calculation and caching
+
+
+
+
+    - Create PythonOperator task to calculate beauty score using algorithm weights
+    - Implement score calculation: weather state (40%), temperature (30%), air quality (20%), time (10%)
+    - Add golden hour detection and precipitation/air quality penalties
+    - Store calculated score in PostgreSQL with timestamp
+    - Update Redis cache with current score and 1-hour TTL
+    - _Requirements: 1.5, 2.3, 2.4, 2.5, 4.3, 4.4, 10.2_
+
+  - [ ]* 4.4 Write property test for hourly forecast completeness
     - **Property 3: Hourly Forecast Completeness**
     - **Validates: Requirements 2.1**
 
-  - [ ]* 3.6 Write property test for best time highlighting
+  - [ ]* 4.5 Write property test for best time highlighting
     - **Property 4: Best Time Highlighting**
     - **Validates: Requirements 2.2**
 
-- [ ] 4. Implement calendar functionality
-  - [ ] 4.1 Create calendar view API endpoint
-    - Implement `/calendar/view` endpoint to serve pre-rendered calendar HTML from cache
-    - Add calendar detail modal endpoint for date-specific information
-    - Handle month navigation and date range calculations
-    - _Requirements: 3.1, 3.2, 3.3_
+- [x] 5. Implement calendar functionality
 
-  - [ ]* 4.2 Write property test for calendar color coding
+
+
+  - [x] 5.1 Create calendar generation utilities
+
+
+    - Implement Python function to generate monthly calendar grid HTML
+    - Add color intensity mapping based on score ranges (0-30: red, 80-100: green)
+    - Create seasonal icon assignment logic based on date ranges
+    - _Requirements: 3.1, 3.4_
+
+  - [x] 5.2 Implement calendar API endpoints
+
+
+    - Create GET /calendar/view endpoint to serve pre-rendered calendar HTML
+    - Implement GET /calendar/detail endpoint for date-specific information modal
+    - Add GET /api/monthly-calendar endpoint for JSON calendar data
+    - _Requirements: 3.1, 6.5_
+
+  - [x] 5.3 Create Calendar Generation DAG
+
+
+    - Create `airflow/dags/calendar_generation_dag.py` with daily schedule
+    - Implement task to fetch medium-term forecast (D+0 to D+10) from weather API
+    - Add task for statistical prediction (D+11 to month end) using historical averages
+    - Create task to render calendar HTML and cache in Redis with 24-hour TTL
+    - _Requirements: 3.2, 3.3, 10.2_
+
+  - [ ]* 5.4 Write property test for calendar color coding
     - **Property 5: Calendar Color Coding**
     - **Validates: Requirements 3.1**
 
-  - [ ]* 4.3 Write property test for seasonal icon display
+  - [ ]* 5.5 Write property test for seasonal icon display
     - **Property 6: Seasonal Icon Display**
     - **Validates: Requirements 3.4**
 
-  - [ ] 4.4 Implement calendar HTML generation utilities
-    - Create calendar grid rendering functions with Tailwind CSS classes
-    - Implement color intensity mapping for beauty scores
-    - Add seasonal icon assignment logic based on dates and historical patterns
-    - _Requirements: 3.1, 3.4_
+- [x] 6. Implement image upload and AI classification
 
-- [ ] 5. Implement image upload and processing system
-  - [ ] 5.1 Create image upload API endpoints
-    - Implement `/upload/image` POST endpoint for file uploads
-    - Add file validation and size limits for uploaded images
-    - Create upload form HTML partial for HTMX integration
-    - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 5.2 Implement AI image classification
-    - Integrate lightweight vision model (MobileNet or CLIP) for content classification
-    - Create classification logic to identify landscape/lake/nature content
-    - Implement rejection logic for inappropriate content with user feedback
-    - _Requirements: 5.1, 5.2, 5.5_
 
-  - [ ]* 5.3 Write property test for image classification accuracy
+
+  - [x] 6.1 Create image upload endpoint and form
+
+
+    - Implement POST /upload/image endpoint with file upload handling
+    - Add file size validation (max 10MB) and allowed extensions check
+    - Create upload form HTML template with HTMX for async submission
+    - Add progress indicator and success/error message display
+    - _Requirements: 5.1, 5.3, 5.4_
+
+
+
+  - [x] 6.2 Implement AI image classification
+
+
+
+
+    - Integrate CLIP or MobileNet model using transformers library
+    - Create classification function to detect landscape/lake/nature content
+    - Implement rejection logic for inappropriate content (selfies, documents, food)
+    - Add EXIF metadata extraction using Pillow library
+    - Store validated images and metadata in PostgreSQL user_uploads table
+    - _Requirements: 5.1, 5.2, 5.3, 5.5_
+
+  - [ ]* 6.3 Write property test for image classification accuracy
     - **Property 7: Image Classification Accuracy**
     - **Validates: Requirements 5.1, 5.2**
 
-  - [ ] 5.4 Implement EXIF metadata extraction
-    - Add EXIF data parsing for uploaded images
-    - Extract timestamp information and store in database
-    - Handle images without EXIF data gracefully
-    - _Requirements: 5.3_
-
-  - [ ]* 5.5 Write property test for EXIF metadata extraction
+  - [ ]* 6.4 Write property test for EXIF metadata extraction
     - **Property 8: EXIF Metadata Extraction**
     - **Validates: Requirements 5.3**
 
-- [ ] 6. Set up Airflow infrastructure and basic DAGs
-  - [ ] 6.1 Configure Airflow with Docker Compose
-    - Set up Airflow webserver, scheduler, and worker containers
-    - Configure Airflow connections for external APIs and databases
-    - Create DAG directory structure and basic configuration
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+- [x] 7. Implement AI background image generation
 
-  - [ ] 6.2 Create Weather ETL DAG structure
-    - Implement basic DAG definition with hourly scheduling
-    - Create task structure for weather data fetching and processing
-    - Add task dependencies and error handling configuration
-    - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-  - [ ] 6.3 Implement weather data fetching tasks
-    - Create tasks to fetch data from Korea Meteorological Administration API
-    - Add air quality data fetching from Korea Environment Corporation API
-    - Implement data validation and error handling for API responses
-    - _Requirements: 4.1, 4.2_
 
-  - [ ] 6.4 Implement beauty score calculation in DAG
-    - Create score calculation task with configurable algorithm parameters
-    - Implement weather condition change detection logic
-    - Add Redis cache update tasks for calculated scores
-    - _Requirements: 4.3, 4.4, 4.5_
+  - [x] 7.1 Create AI Image Generation DAG
 
-- [ ] 7. Implement AI image generation DAG
-  - [ ] 7.1 Create AI Image Generation DAG structure
-    - Set up DAG with trigger-based and scheduled execution
-    - Create task dependencies for prompt generation and image creation
-    - Configure external API connections for Stable Diffusion/DALL-E
-    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-  - [ ] 7.2 Implement weather-based prompt generation
-    - Create prompt generation logic based on weather conditions and time
-    - Add seasonal and time-of-day variations to prompts
-    - Implement prompt templates for different weather scenarios
+    - Create `airflow/dags/ai_image_dag.py` with 3-hour schedule and trigger capability
+    - Set up external trigger from Weather ETL DAG on significant weather changes
+    - Configure task dependencies for prompt generation and image creation
+    - _Requirements: 9.1, 9.5_
+
+  - [x] 7.2 Implement weather-based prompt generation
+
+
+    - Create task to generate AI prompts based on current weather conditions
+    - Add seasonal variations (spring: cherry blossoms, autumn: leaves)
+    - Implement time-of-day variations (morning, afternoon, evening, night)
     - _Requirements: 9.2_
 
-  - [ ] 7.3 Implement AI image generation and storage
-    - Create tasks to call external AI APIs for image generation
-    - Implement image file storage and static file management
-    - Add image metadata caching in Redis
+  - [x] 7.3 Implement AI image generation and storage
+
+
+    - Create task to call Stable Diffusion API or OpenAI DALL-E with generated prompt
+    - Implement image download and storage in app/static/generated/ directory
+    - Store image metadata (prompt, file path, timestamp) in PostgreSQL
+    - Update Redis cache with latest image path
     - _Requirements: 9.3, 9.4_
 
-- [ ] 8. Implement calendar generation DAG
-  - [ ] 8.1 Create Calendar Generation DAG
-    - Set up daily DAG execution for calendar data updates
-    - Create task structure for forecast and historical data processing
-    - Implement calendar HTML pre-rendering tasks
-    - _Requirements: 3.2, 3.3_
+  - [x] 7.4 Add background image auto-update to web interface
 
-  - [ ] 8.2 Implement forecast and historical prediction tasks
-    - Create tasks to fetch medium-term forecast data (D+0 to D+10)
-    - Implement statistical prediction based on historical data (D+11 to month end)
-    - Add seasonal icon assignment logic for calendar dates
-    - _Requirements: 3.2, 3.3, 3.4_
 
-  - [ ] 8.3 Implement calendar HTML rendering and caching
-    - Create calendar grid HTML generation with Tailwind CSS
-    - Implement color coding for beauty scores and seasonal icons
-    - Add Redis caching for pre-rendered calendar HTML partials
-    - _Requirements: 3.1, 3.4_
+    - Create GET /bg-image endpoint to check for new background images
+    - Add HTMX polling (every 60 seconds) to update background image
+    - Implement smooth transition effect when image changes
+    - _Requirements: 6.3_
 
-- [ ] 9. Implement error handling and system reliability
-  - [ ] 9.1 Add comprehensive error handling to API endpoints
-    - Implement consistent error response formats across all endpoints
-    - Add fallback mechanisms for cache and database failures
-    - Create user-friendly error messages for upload failures
+- [x] 8. Add comprehensive error handling
+
+
+
+
+
+  - [x] 8.1 Implement API error handling
+
+
+    - Add try-except blocks to all FastAPI endpoints
+    - Create consistent error response format with status codes
+    - Implement fallback to cached data when database is unavailable
+    - Add user-friendly error messages for upload failures
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ]* 9.2 Write property test for error response consistency
+  - [x] 8.2 Implement DAG error handling and retry logic
+
+
+
+    - Add retry configuration to all external API tasks (retries=3, retry_delay=5min)
+    - Implement graceful degradation when external services fail
+    - Add on_failure_callback for error logging and alerting
+    - _Requirements: 7.1, 7.4_
+
+  - [ ]* 8.3 Write property test for error response consistency
     - **Property 10: Error Response Consistency**
     - **Validates: Requirements 7.1, 7.3, 7.4**
 
-  - [ ] 9.3 Implement DAG error handling and retry logic
-    - Add retry mechanisms for external API calls in DAGs
-    - Implement graceful degradation when external services fail
-    - Add monitoring and alerting for DAG failures
-    - _Requirements: 7.1, 7.4_
+- [ ] 9. Final integration and deployment
+  - [ ] 9.1 Add FastAPI service to Docker Compose
+    - Add fastapi service definition to docker-compose.yaml
+    - Configure networking to connect with postgres and redis services
+    - Set up volume mounts for app code, templates, and static files
+    - Expose port 8000 for FastAPI application
+    - _Requirements: 8.1, 8.2, 8.4, 8.5_
 
-- [ ] 10. Final integration and testing
-  - [ ] 10.1 Integrate all components and test end-to-end functionality
-    - Connect FastAPI endpoints with Airflow-generated cache data
-    - Test HTMX interface with real data from Redis cache
-    - Verify image upload and processing workflow
+  - [ ] 9.2 Test end-to-end data flow
+    - Verify Weather ETL DAG runs and populates Redis cache
+    - Test FastAPI endpoints serve data from Redis correctly
+    - Verify HTMX updates work without page refresh
+    - Test image upload and classification workflow
+    - Confirm calendar generation and display
     - _Requirements: All requirements integration_
 
-  - [ ]* 10.2 Write integration tests for critical user flows
+  - [ ]* 9.3 Write integration tests for critical user flows
     - Test main dashboard loading and score display
-    - Test calendar navigation and detail views
-    - Test image upload and classification workflow
-    - _Requirements: 1.1, 1.2, 2.1, 2.2, 3.1, 5.1, 5.2_
-
-- [ ] 11. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+    - Test calendar navigation and modal functionality
+    - Test image upload workflow end-to-end
+    - _Requirements: 1.1, 1.2, 2.1, 3.1, 5.1_

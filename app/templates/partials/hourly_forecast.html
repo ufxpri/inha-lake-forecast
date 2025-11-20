@@ -1,0 +1,35 @@
+<!-- Hourly Forecast Partial - Returned by /api/hourly-forecast endpoint -->
+{% if forecast_data %}
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+    {% for item in forecast_data %}
+    <div class="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 text-center border-2 {% if item.is_best %}border-yellow-400 shadow-lg{% else %}border-transparent{% endif %} transition hover:shadow-md">
+        <!-- Best Badge -->
+        {% if item.is_best %}
+        <div class="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full shadow">
+            ⭐ Best
+        </div>
+        {% endif %}
+        
+        <!-- Time -->
+        <div class="text-sm sm:text-base font-semibold text-gray-700 mb-2">
+            {{ item.hour }}
+        </div>
+        
+        <!-- Score -->
+        <div class="text-2xl sm:text-3xl font-bold mb-2 {% if item.score >= 80 %}text-green-600{% elif item.score >= 50 %}text-blue-600{% else %}text-red-600{% endif %}">
+            {{ item.score }}
+        </div>
+        
+        <!-- Condition -->
+        <div class="text-xs sm:text-sm text-gray-600">
+            {{ item.condition }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8">
+    <p class="text-gray-600">시간별 예보 데이터가 없습니다</p>
+    <p class="text-sm text-gray-500 mt-2">잠시 후 다시 시도해주세요</p>
+</div>
+{% endif %}

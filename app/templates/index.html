@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}인경호 뷰티 스코어 - 메인{% endblock %}
+
+{% block content %}
+<!-- Main Container with responsive padding -->
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 max-w-7xl">
+    
+    <!-- Header -->
+    <header class="text-center mb-8 sm:mb-12">
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800 mb-2 sm:mb-3">
+            🏞️ 인경호 뷰티 스코어
+        </h1>
+        <p class="text-base sm:text-lg text-gray-600">실시간 인경호 아름다움 지수</p>
+    </header>
+    
+    <!-- Hero Section - Current Score with Background Image -->
+    <section class="mb-8 sm:mb-12">
+        <div 
+            id="hero-section" 
+            class="relative bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl shadow-2xl overflow-hidden"
+            style="min-height: 400px;"
+        >
+            <!-- Background Image Container (will be updated via HTMX) -->
+            <div 
+                id="bg-image-container" 
+                class="absolute inset-0 bg-cover bg-center opacity-30"
+                hx-get="/bg-image" 
+                hx-trigger="every 60s"
+                hx-swap="outerHTML"
+            >
+            </div>
+            
+            <!-- Score Display Overlay -->
+            <div class="relative z-10 p-6 sm:p-8 lg:p-12 text-center text-white">
+                <div 
+                    id="score-box" 
+                    hx-get="/score" 
+                    hx-trigger="load"
+                    hx-swap="innerHTML"
+                >
+                    <!-- Initial loading state -->
+                    <div class="score-display font-bold mb-4 animate-pulse">--</div>
+                    <div class="text-xl sm:text-2xl mb-4">데이터 로딩 중...</div>
+                    <div class="text-sm sm:text-base opacity-80">잠시만 기다려주세요</div>
+                </div>
+                
+                <!-- Refresh Button -->
+                <div class="mt-6 sm:mt-8">
+                    <button 
+                        class="bg-white text-blue-600 hover:bg-blue-50 px-6 sm:px-8 py-2 sm:py-3 rounded-full font-semibold shadow-lg transition transform hover:scale-105"
+                        hx-get="/score" 
+                        hx-target="#score-box"
+                        hx-swap="innerHTML"
+                    >
+                        🔄 새로고침
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Hourly Forecast Section -->
+    <section class="mb-8 sm:mb-12">
+        <div class="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800">⏰ 시간별 예보</h2>
+        </div>
+        <div 
+            id="hourly-forecast" 
+            class="bg-white rounded-xl shadow-lg p-4 sm:p-6"
+            hx-get="/api/hourly-forecast" 
+            hx-trigger="load"
+            hx-swap="innerHTML"
+        >
+            <!-- Loading state -->
+            <div class="text-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-600">시간별 예보 데이터를 불러오는 중...</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Calendar Section -->
+    <section class="mb-8 sm:mb-12">
+        <div class="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800">📅 월간 캘린더</h2>
+        </div>
+        <div 
+            id="calendar-view" 
+            class="bg-white rounded-xl shadow-lg p-4 sm:p-6"
+            hx-get="/calendar/view"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+        >
+            <!-- Loading state -->
+            <div class="text-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-600">캘린더 데이터를 불러오는 중...</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Upload Section -->
+    <section class="mb-8 sm:mb-12">
+        <div class="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800">📸 사진 업로드</h2>
+        </div>
+        <div 
+            id="upload-section"
+            class="bg-white rounded-xl shadow-lg p-4 sm:p-6"
+            hx-get="/upload/form"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+        >
+            <!-- Loading state -->
+            <div class="text-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-600">업로드 폼을 불러오는 중...</p>
+            </div>
+        </div>
+    </section>
+    
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // HTMX event listeners for better UX
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        // Add fade effect before content swap
+        if (evt.detail.target.id === 'score-box') {
+            evt.detail.target.style.opacity = '0.5';
+        }
+        
+        // Handle background image transitions
+        if (evt.detail.target.id === 'bg-image-container') {
+            // Store the old background image URL
+            const oldBgImage = evt.detail.target.style.backgroundImage;
+            const newContent = evt.detail.serverResponse;
+            
+            // Check if the background image actually changed
+            if (newContent && newContent.includes('background-image:')) {
+                const newBgMatch = newContent.match(/background-image:\s*url\(['"]?([^'"]+)['"]?\)/);
+                const oldBgMatch = oldBgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
+                
+                if (newBgMatch && oldBgMatch && newBgMatch[1] !== oldBgMatch[1]) {
+                    console.log('Background image changed:', oldBgMatch[1], '->', newBgMatch[1]);
+                    // Fade out before swap
+                    evt.detail.target.style.opacity = '0';
+                    setTimeout(() => {
+                        evt.detail.target.style.opacity = '0.3';
+                    }, 100);
+                }
+            }
+        }
+    });
+    
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        // Restore opacity after content swap
+        if (evt.detail.target.id === 'score-box') {
+            evt.detail.target.style.opacity = '1';
+        }
+        
+        // Ensure background image container has proper opacity
+        if (evt.detail.target.id === 'bg-image-container') {
+            // Trigger fade-in animation
+            evt.detail.target.classList.add('htmx-added');
+            setTimeout(() => {
+                evt.detail.target.classList.remove('htmx-added');
+            }, 1000);
+        }
+    });
+    
+    // Log background image updates for debugging
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.pathInfo.requestPath === '/bg-image') {
+            console.log('Background image check completed at:', new Date().toLocaleTimeString());
+        }
+    });
+</script>
+{% endblock %}

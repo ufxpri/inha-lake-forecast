@@ -1,0 +1,7 @@
+<!-- Score Display Partial - Returned by /score endpoint -->
+<div class="score-display font-bold mb-4">{{ score }}</div>
+<div class="text-xl sm:text-2xl lg:text-3xl font-semibold mb-2">{{ status_message }}</div>
+<div class="text-sm sm:text-base opacity-90">
+    <p>{{ weather_condition }}</p>
+    <p class="text-xs sm:text-sm mt-2">마지막 업데이트: {{ updated_at }}</p>
+</div>

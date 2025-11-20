@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}인경호 뷰티 스코어{% endblock %}</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HTMX via CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'lake-blue': '#3b82f6',
+                        'lake-dark': '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Custom styles for smooth transitions */
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 200ms ease-out;
+        }
+        
+        .htmx-settling {
+            opacity: 1;
+            transition: opacity 200ms ease-in;
+        }
+        
+        /* Smooth background image transitions */
+        #bg-image-container {
+            transition: background-image 1s ease-in-out, opacity 1s ease-in-out;
+        }
+        
+        /* Fade-in animation for new background images */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 0.3;
+            }
+        }
+        
+        #bg-image-container.htmx-added {
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        /* Responsive font scaling */
+        @media (max-width: 640px) {
+            .score-display {
+                font-size: 4rem;
+            }
+        }
+        
+        @media (min-width: 641px) {
+            .score-display {
+                font-size: 6rem;
+            }
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+    
+    <!-- Footer -->
+    <footer class="mt-12 py-6 text-center text-gray-600 text-sm">
+        <p>인경호 뷰티 스코어 서비스 | Powered by Airflow & HTMX</p>
+    </footer>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
