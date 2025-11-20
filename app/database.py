@@ -6,7 +6,7 @@ import os
 from typing import Optional
 import asyncpg
 from asyncpg import Pool
-from app.init_db import initialize_database
+from init_db import initialize_database
 
 # Global connection pool
 _pool: Optional[Pool] = None

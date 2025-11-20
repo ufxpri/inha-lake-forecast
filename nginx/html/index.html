@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>인경호 언제 예뻐?</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- HTMX via CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <style>
+        /* 기본 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F7F8FA;
+            color: #333;
+            display: flex;
+            justify-content: center;
+        }
+
+        .mobile-wrapper {
+            width: 100%;
+            max-width: 480px;
+            background-color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 80px;
+            position: relative;
+        }
+
+        /* 공통 유틸리티 */
+        .highlight-blue {
+            color: #3D6AFE;
+            font-weight: 700;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #555;
+        }
+
+        .card-box {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* 헤더 & 히어로 이미지 */
+        .header-section {
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+
+        .main-title {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+
+        .hero-image-container {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-badge {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        /* 차트 스타일 */
+        .chart-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            height: 150px;
+            padding-top: 40px;
+        }
+
+        .chart-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            flex: 1;
+            position: relative;
+        }
+
+        .bar {
+            width: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .time-label {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .emoji-face {
+            position: absolute;
+            top: -30px;
+            font-size: 20px;
+        }
+
+        /* 캘린더 스타일 */
+        .calendar-header {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .day-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .date {
+            font-size: 14px;
+            padding: 8px 0;
+            position: relative;
+            height: 44px;
+        }
+
+        .date.sun { color: #e53935; }
+        .date.sat { color: #3D6AFE; }
+        .date.faded { color: #ddd; }
+
+        .date.special span {
+            display: block;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        /* 추천 리스트 카드 */
+        .info-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .info-card.yellow {
+            background-color: #FFF59D;
+            color: #555;
+        }
+
+        .info-card.pink {
+            background-color: #F8BBD0;
+            color: #555;
+        }
+
+        /* 하단 고정 버튼 */
+        .fixed-bottom-btn-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(to top, white 70%, transparent);
+            pointer-events: none;
+        }
+
+        .upload-btn {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 440px;
+            height: 56px;
+            background-color: #3D6AFE;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(61, 106, 254, 0.3);
+            cursor: pointer;
+        }
+
+        .upload-btn .icon {
+            margin-right: 8px;
+        }
+
+        /* HTMX 애니메이션 */
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 200ms ease-out;
+        }
+        
+        .htmx-settling {
+            opacity: 1;
+            transition: opacity 200ms ease-in;
+        }
+
+        .content-section {
+            margin-bottom: 30px;
+        }
+
+        .spacer {
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-wrapper">
+        
+        <section class="header-section">
+            <h1 class="main-title">
+                지금 인경호의 상태는...<br>
+                <span 
+                    id="current-status"
+                    hx-get="/components/current-status" 
+                    hx-trigger="load, every 600s"
+                    hx-swap="innerHTML"
+                    class="highlight-blue"
+                >
+                    로딩중...
+                </span>
+            </h1>
+            <div class="hero-image-container">
+                <div 
+                    id="hero-image"
+                    hx-get="/components/hero-image" 
+                    hx-trigger="load, every 1800s"
+                    hx-swap="innerHTML"
+                >
+                    <!-- Loading placeholder -->
+                    <div style="background: #f0f0f0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #999;">
+                        이미지 로딩중...
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2 class="section-title">
+                오늘 하루 인경호가 가장 예쁜 시간은 
+                <span 
+                    id="best-time"
+                    hx-get="/components/best-time" 
+                    hx-trigger="load, every 1800s"
+                    hx-swap="innerHTML"
+                    class="highlight-blue"
+                >
+                    --:--
+                </span>
+            </h2>
+            <div 
+                id="hourly-chart"
+                hx-get="/components/hourly-chart" 
+                hx-trigger="load, every 1800s"
+                hx-swap="innerHTML"
+                class="card-box chart-box"
+            >
+                <!-- Default chart -->
+                <div class="chart-item">
+                    <div class="emoji-face">😯</div>
+                    <div class="bar" style="height: 40%; background-color: #ccc;"></div>
+                    <div class="time-label">15:00</div>
+                </div>
+                <div class="chart-item active">
+                    <div class="emoji-face">😆</div>
+                    <div class="bar" style="height: 100%; background-color: #3D6AFE;"></div>
+                    <div class="time-label">15:10</div>
+                </div>
+                <div class="chart-item">
+                    <div class="emoji-face">😊</div>
+                    <div class="bar" style="height: 70%; background-color: #ccc;"></div>
+                    <div class="time-label">15:20</div>
+                </div>
+                <div class="chart-item">
+                    <div class="emoji-face">😰</div>
+                    <div class="bar" style="height: 30%; background-color: #ccc;"></div>
+                    <div class="time-label">15:30</div>
+                </div>
+                <div class="chart-item">
+                    <div class="emoji-face">🙂</div>
+                    <div class="bar" style="height: 80%; background-color: #ccc;"></div>
+                    <div class="time-label">15:40</div>
+                </div>
+                <div class="chart-item">
+                    <div class="emoji-face">😥</div>
+                    <div class="bar" style="height: 50%; background-color: #ccc;"></div>
+                    <div class="time-label">15:50</div>
+                </div>
+                <div class="chart-item">
+                    <div class="emoji-face">😋</div>
+                    <div class="bar" style="height: 80%; background-color: #ccc;"></div>
+                    <div class="time-label">16:00</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2 class="section-title">
+                이번 달 인경호가 가장 예쁜 날짜는 
+                <span 
+                    id="best-date"
+                    hx-get="/components/best-date" 
+                    hx-trigger="load, every 3600s"
+                    hx-swap="innerHTML"
+                    class="highlight-blue"
+                >
+                    11월 21일
+                </span>
+            </h2>
+            <div 
+                id="monthly-calendar"
+                hx-get="/components/monthly-calendar" 
+                hx-trigger="load, every 3600s"
+                hx-swap="innerHTML"
+                class="card-box calendar-box"
+            >
+                <div class="calendar-header">11월</div>
+                <div class="calendar-grid">
+                    <div class="day-name sun">일</div>
+                    <div class="day-name">월</div>
+                    <div class="day-name">화</div>
+                    <div class="day-name">수</div>
+                    <div class="day-name">목</div>
+                    <div class="day-name">금</div>
+                    <div class="day-name sat">토</div>
+                    
+                    <div class="date sun faded">26</div> <div class="date faded">27</div> <div class="date faded">28</div> <div class="date faded">29</div> <div class="date faded">30</div> <div class="date faded">31</div> <div class="date sat">1</div>
+                    <div class="date sun">2</div> <div class="date">3</div> <div class="date">4</div> <div class="date">5</div> <div class="date">6</div> <div class="date">7</div> <div class="date sat">8</div>
+                    <div class="date sun">9</div> <div class="date">10</div> <div class="date">11</div> <div class="date">12</div> <div class="date">13</div> 
+                    <div class="date special">14<span>✨</span></div> <div class="date sat">15</div>
+                    <div class="date sun">16</div> <div class="date">17</div> <div class="date">18</div> <div class="date">19</div> 
+                    <div class="date special">20<span>🥰</span></div> <div class="date special">21</div> <div class="date sat">22</div>
+                    <div class="date sun">23</div> <div class="date">24</div> <div class="date">25</div> <div class="date">26</div> <div class="date">27</div> <div class="date">28</div> <div class="date sat">29</div>
+                    <div class="date sun">30</div> <div class="date faded">1</div> <div class="date faded">2</div> <div class="date faded">3</div> <div class="date faded">4</div> <div class="date faded">5</div> <div class="date faded sat">6</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2 class="section-title">이번 달 <span class="highlight-blue">인경호가 예쁜 날짜</span>들만 모았어요</h2>
+            
+            <div 
+                id="special-dates"
+                hx-get="/components/special-dates" 
+                hx-trigger="load, every 3600s"
+                hx-swap="innerHTML"
+            >
+                <div class="info-card yellow">
+                    <span class="card-date">11월 14일</span>
+                    <span class="card-desc">가장 맑은 날 ✨</span>
+                </div>
+                
+                <div class="info-card pink">
+                    <span class="card-date">11월 23일</span>
+                    <span class="card-desc">가장 구름 없는 날 🪁</span>
+                </div>
+
+                <div class="info-card yellow">
+                    <span class="card-date">11월 20일</span>
+                    <span class="card-desc">가장 따뜻한 날 😍</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="spacer"></div>
+        <div class="fixed-bottom-btn-wrapper">
+            <button class="upload-btn" onclick="window.location.href='upload.html'">
+                <span class="icon">📤</span> 인경호 사진 업로드하기
+            </button>
+        </div>
+
+    </div>
+    
+    <script>
+        // Refresh all components
+        function refreshAll() {
+            htmx.trigger('#current-status', 'refresh');
+            htmx.trigger('#hero-image', 'refresh');
+            htmx.trigger('#best-time', 'refresh');
+            htmx.trigger('#hourly-chart', 'refresh');
+            htmx.trigger('#best-date', 'refresh');
+            htmx.trigger('#monthly-calendar', 'refresh');
+            htmx.trigger('#special-dates', 'refresh');
+        }
+        
+        // HTMX event listeners for smooth transitions
+        document.body.addEventListener('htmx:beforeSwap', function(evt) {
+            // Add fade effect before content swap
+            evt.detail.target.style.opacity = '0.7';
+            evt.detail.target.style.transition = 'opacity 200ms ease-out';
+        });
+        
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            // Restore opacity after content swap
+            evt.detail.target.style.opacity = '1';
+            evt.detail.target.style.transition = 'opacity 200ms ease-in';
+        });
+        
+        // Log component updates for debugging
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.pathInfo.requestPath.startsWith('/components/')) {
+                console.log('Component updated:', evt.detail.pathInfo.requestPath, 'at:', new Date().toLocaleTimeString());
+            }
+        });
+
+        // Add manual refresh button (hidden, can be triggered via console)
+        function manualRefresh() {
+            refreshAll();
+            console.log('Manual refresh triggered at:', new Date().toLocaleTimeString());
+        }
+
+        // Auto-refresh every 10 minutes
+        setInterval(refreshAll, 600000);
+    </script>
+    
+</body>
+</html>

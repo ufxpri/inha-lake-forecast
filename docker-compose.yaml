@@ -79,6 +79,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ./app:/opt/airflow/app
+    - ./nginx/html:/opt/airflow/nginx_html
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -332,6 +334,41 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+
+  # FastAPI Application
+  app:
+    build: .
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./app:/app
+      - ./app/static:/app/static
+    environment:
+      - DATABASE_URL=postgresql://airflow:airflow@postgres:5432/airflow
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_IMAGE_SERVICE=${AI_IMAGE_SERVICE:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - STABILITY_API_KEY=${STABILITY_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8082:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html
+    depends_on:
+      - app
+    restart: always
 
 volumes:
   postgres-db-volume:

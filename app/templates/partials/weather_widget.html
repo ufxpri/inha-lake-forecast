@@ -1,0 +1,49 @@
+<!-- Compact Weather Widget for Main Page -->
+<div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg sm:text-xl font-bold text-gray-800">🌤️ 날씨 요약</h3>
+        <a 
+            href="/weather" 
+            class="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+        >
+            자세히 보기 →
+        </a>
+    </div>
+    
+    <!-- Current Weather Summary -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        
+        <!-- Current Conditions -->
+        <div class="text-center p-3 bg-blue-50 rounded-lg">
+            <div class="text-2xl mb-1">{{ current_icon }}</div>
+            <div class="text-sm font-semibold text-gray-700">현재</div>
+            <div class="text-lg font-bold text-blue-600">{{ current_temp }}°C</div>
+            <div class="text-xs text-gray-600">{{ current_condition }}</div>
+        </div>
+        
+        <!-- Today's Best -->
+        <div class="text-center p-3 bg-green-50 rounded-lg">
+            <div class="text-2xl mb-1">{{ today_icon }}</div>
+            <div class="text-sm font-semibold text-gray-700">오늘 베스트</div>
+            <div class="text-lg font-bold text-green-600">{{ today_time }}</div>
+            <div class="text-xs text-gray-600">{{ today_score }}점</div>
+        </div>
+        
+        <!-- Week's Best -->
+        <div class="text-center p-3 bg-purple-50 rounded-lg">
+            <div class="text-2xl mb-1">{{ week_icon }}</div>
+            <div class="text-sm font-semibold text-gray-700">주간 베스트</div>
+            <div class="text-lg font-bold text-purple-600">{{ week_day }}</div>
+            <div class="text-xs text-gray-600">{{ week_score }}점</div>
+        </div>
+        
+    </div>
+    
+    <!-- Auto-refresh every 5 minutes -->
+    <div 
+        hx-get="/weather/widget" 
+        hx-trigger="every 300s"
+        hx-target="#weather-widget"
+        hx-swap="outerHTML"
+    ></div>
+</div>
