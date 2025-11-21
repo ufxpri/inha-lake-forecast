@@ -14,9 +14,9 @@
     <div class="date faded"></div>
     <div class="date faded"></div>
     <div class="date">1</div>
-    <div class="date sat special">2<span>🥰</span></div>
-    <div class="date sun special">3<span>✨</span></div>
-    <div class="date special">4<span>💫</span></div>
+    <div class="date sat">2</div>
+    <div class="date sun">3</div>
+    <div class="date">4</div>
     <div class="date">5</div>
     <div class="date">6</div>
     <div class="date">7</div>

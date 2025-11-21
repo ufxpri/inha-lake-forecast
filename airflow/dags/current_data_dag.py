@@ -186,18 +186,17 @@ def generate_scenario_prompt(weather_item, condition):
 
 
 def generate_openai_image(**context):
-    """Generate image using OpenAI DALL-E"""
+    """Step 5: Generate image using OpenAI DALL-E"""
     # Get weather data from XCom
-    weather_condition = context['task_instance'].xcom_pull(key='weather_condition', task_ids='update_current_components')
+    weather_condition = context['task_instance'].xcom_pull(key='weather_condition', task_ids='calculate_scores')
+    weather_item = context['task_instance'].xcom_pull(key='weather_item', task_ids='fetch_weather_data')
     
-    if not weather_condition:
-        logging.warning("No weather condition data available")
+    if not weather_condition or not weather_item:
+        logging.warning("No weather data available for image generation")
         return
     
     # Generate scenario prompt
-    weather_item = fetch_current_weather()
     scenario_prompt = generate_scenario_prompt(weather_item, weather_condition)
-    
     prompt = f"Beautiful scenic view of Inha Lake based on this scenario: {scenario_prompt}"
     
     try:
@@ -235,52 +234,75 @@ def generate_openai_image(**context):
             
             cropped_img = img.crop(crop_box)
             cropped_img.save('/opt/airflow/nginx_html/images/latest.jpg', 'JPEG', quality=95)
-            print(f"✓ Generated and saved 16:9 AI image at {datetime.now().isoformat()}")
+            print(f"✓ Generated and saved 16:9 AI image")
         
     except Exception as e:
         logging.error(f"Failed to generate OpenAI image: {e}")
 
 
-def update_current_components(**context):
-    """
-    Main task: Update current-status and hero-image components
-    """
-    # Step 1: Fetch current weather data from KMA API
+def fetch_weather_data(**context):
+    """Step 1: Fetch current weather data from KMA API"""
     weather_item = fetch_current_weather()
     
     if not weather_item:
-        logging.warning("Failed to fetch weather data, skipping update")
-        return
+        logging.warning("Failed to fetch weather data")
+        raise ValueError("No weather data available")
     
-    # Step 2: Calculate beauty score
+    print(f"✓ Fetched weather data: 기온 {weather_item.get('ta')}°C, 시정 {weather_item.get('vs')}x10m, 운량 {weather_item.get('dc10Tca', 10)}/10")
+    
+    # Push to XCom
+    context['task_instance'].xcom_push(key='weather_item', value=weather_item)
+    return weather_item
+
+
+def calculate_scores(**context):
+    """Step 2: Calculate beauty score and determine weather condition"""
+    weather_item = context['task_instance'].xcom_pull(key='weather_item', task_ids='fetch_weather_data')
+    
+    if not weather_item:
+        raise ValueError("No weather data from previous task")
+    
+    # Calculate beauty score
     score = calculate_beauty_score(weather_item)
     
-    # Step 3: Determine weather condition
+    # Determine weather condition
     cloud_amount = weather_item.get('dc10Tca', 10)
     phenomena = weather_item.get('dmstMtphNo', 'N/A')
     condition, emoji = get_weather_condition(cloud_amount, phenomena)
     
     print(f"✓ Beauty score: {score}")
     print(f"✓ Weather: {condition} {emoji}")
-    print(f"✓ Data: 기온 {weather_item.get('ta')}°C, 시정 {weather_item.get('vs')}x10m, 운량 {cloud_amount}/10")
     
-    # Step 4: Generate and write current-status
+    # Push to XCom
+    context['task_instance'].xcom_push(key='beauty_score', value=score)
+    context['task_instance'].xcom_push(key='weather_condition', value=condition)
+    context['task_instance'].xcom_push(key='weather_emoji', value=emoji)
+    
+    return {'score': score, 'condition': condition, 'emoji': emoji}
+
+
+def generate_status_component(**context):
+    """Step 3: Generate and write current-status component"""
+    condition = context['task_instance'].xcom_pull(key='weather_condition', task_ids='calculate_scores')
+    emoji = context['task_instance'].xcom_pull(key='weather_emoji', task_ids='calculate_scores')
+    
     weather_data = {
         'condition': condition,
         'emoji': emoji
     }
+    
     status_html = generate_current_status(weather_data)
     write_component('current-status', status_html)
     
-    # Step 5: Generate and write hero-image  
+    print(f"✓ Generated current-status component")
+
+
+def generate_hero_component(**context):
+    """Step 4: Generate and write hero-image component"""
     hero_html = generate_hero_image('/images/latest.jpg')
     write_component('hero-image', hero_html)
     
-    print(f"✓ Updated current components at {datetime.now().isoformat()}")
-    
-    # Push data to XCom
-    context['task_instance'].xcom_push(key='beauty_score', value=score)
-    context['task_instance'].xcom_push(key='weather_condition', value=condition)
+    print(f"✓ Generated hero-image component")
 
 
 # Define DAG
@@ -293,14 +315,29 @@ with DAG(
     tags=['current', 'weather', 'kma', 'html'],
 ) as dag:
     
-    update_task = PythonOperator(
-        task_id='update_current_components',
-        python_callable=update_current_components,
+    fetch_task = PythonOperator(
+        task_id='fetch_weather_data',
+        python_callable=fetch_weather_data,
     )
     
-    generate_image_task = PythonOperator(
+    calculate_task = PythonOperator(
+        task_id='calculate_scores',
+        python_callable=calculate_scores,
+    )
+    
+    status_task = PythonOperator(
+        task_id='generate_status_component',
+        python_callable=generate_status_component,
+    )
+    
+    hero_task = PythonOperator(
+        task_id='generate_hero_component',
+        python_callable=generate_hero_component,
+    )
+    
+    image_task = PythonOperator(
         task_id='generate_openai_image',
         python_callable=generate_openai_image,
     )
     
-    update_task >> generate_image_task
+    fetch_task >> calculate_task >> [status_task, hero_task, image_task]

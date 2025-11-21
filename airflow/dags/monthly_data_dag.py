@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
 from html_generators import (
     generate_monthly_calendar,
     generate_special_dates,
+    generate_best_date,
     write_component
 )
 
@@ -226,38 +227,151 @@ def generate_fallback_monthly_scores(year, month):
     }
 
 
-def update_monthly_components(**context):
-    """
-    Main task: Update monthly-calendar and special-dates components
-    """
+def fetch_monthly_data(**context):
+    """Step 1: Fetch last year's monthly weather data"""
     now = datetime.now()
     year = now.year
     month = now.month
     
-    print(f"✓ Predicting beauty scores for {year}-{month:02d}")
+    print(f"✓ Fetching data for {year}-{month:02d} analysis")
     
-    # Step 1: Predict monthly beauty scores
-    predictions = predict_monthly_beauty_scores(year, month)
+    # Fetch last year's data
+    last_year = year - 1
+    monthly_data = fetch_last_year_month_data(last_year, month)
     
-    daily_scores = predictions['daily_scores']
-    special_dates = predictions['special_dates']
-    best_day = predictions['best_day']
+    if not monthly_data:
+        logging.warning("No monthly data available from API")
+        # Push empty data to trigger fallback in next task
+        context['task_instance'].xcom_push(key='raw_monthly_data', value=[])
+        context['task_instance'].xcom_push(key='year', value=year)
+        context['task_instance'].xcom_push(key='month', value=month)
+        return []
     
-    print(f"✓ Predicted {len(daily_scores)} days")
-    print(f"✓ Best day: {month}월 {best_day}일 (score: {daily_scores[best_day]})")
-    print(f"✓ Special dates: {len(special_dates)}")
+    print(f"✓ Fetched {len(monthly_data)} monthly records")
     
-    # Step 2: Prepare special dates for calendar (emoji only)
+    # Push to XCom
+    context['task_instance'].xcom_push(key='raw_monthly_data', value=monthly_data)
+    context['task_instance'].xcom_push(key='year', value=year)
+    context['task_instance'].xcom_push(key='month', value=month)
+    
+    return monthly_data
+
+
+def calculate_monthly_scores(**context):
+    """Step 2: Calculate daily beauty scores for the month"""
+    raw_data = context['task_instance'].xcom_pull(key='raw_monthly_data', task_ids='fetch_monthly_data')
+    year = context['task_instance'].xcom_pull(key='year', task_ids='fetch_monthly_data')
+    month = context['task_instance'].xcom_pull(key='month', task_ids='fetch_monthly_data')
+    
+    if not raw_data:
+        # Use fallback data
+        print(f"✓ Using fallback data for {year}-{month:02d}")
+        predictions = generate_fallback_monthly_scores(year, month)
+    else:
+        # Process real data
+        daily_scores = {}
+        daily_items = {}
+        
+        for item in raw_data:
+            try:
+                tm = item.get('tm', '')
+                if not tm:
+                    continue
+                
+                # Extract day from timestamp
+                day = int(tm.split()[0].split('-')[2])
+                
+                if day not in daily_items:
+                    daily_items[day] = []
+                daily_items[day].append(item)
+            except Exception as e:
+                logging.error(f"Error processing item: {e}")
+                continue
+        
+        # Calculate average score for each day
+        for day, items in daily_items.items():
+            scores = [calculate_beauty_score(item) for item in items]
+            daily_scores[day] = int(sum(scores) / len(scores)) if scores else 50
+        
+        predictions = {'daily_scores': daily_scores}
+    
+    print(f"✓ Calculated scores for {len(predictions['daily_scores'])} days")
+    
+    # Push to XCom
+    context['task_instance'].xcom_push(key='daily_scores', value=predictions['daily_scores'])
+    
+    return predictions['daily_scores']
+
+
+def find_special_dates(**context):
+    """Step 3: Identify special dates (top 3 best days)"""
+    daily_scores = context['task_instance'].xcom_pull(key='daily_scores', task_ids='calculate_monthly_scores')
+    
+    if not daily_scores:
+        raise ValueError("No daily scores from previous task")
+    
+    # Find top 3 special dates
+    sorted_days = sorted(daily_scores.items(), key=lambda x: x[1], reverse=True)
+    top_days = sorted_days[:3] if len(sorted_days) >= 3 else sorted_days
+    
+    special_dates = []
+    emoji_options = ['✨', '🥰', '💫']
+    descriptions = [
+        '가장 맑은 날',
+        '가장 따뜻한 날',
+        '가장 구름 없는 날'
+    ]
+    
+    for i, (day, score) in enumerate(top_days):
+        special_dates.append({
+            'day': day,
+            'emoji': emoji_options[i],
+            'score': score,
+            'description': descriptions[i]
+        })
+    
+    best_day = top_days[0][0] if top_days else 15
+    
+    print(f"✓ Found {len(special_dates)} special dates")
+    print(f"✓ Best day: {best_day}일 (score: {daily_scores[best_day]})")
+    
+    # Push to XCom
+    context['task_instance'].xcom_push(key='special_dates', value=special_dates)
+    context['task_instance'].xcom_push(key='best_day', value=best_day)
+    
+    return special_dates
+
+
+def generate_calendar_component(**context):
+    """Step 4: Generate and write monthly-calendar component"""
+    year = context['task_instance'].xcom_pull(key='year', task_ids='fetch_monthly_data')
+    month = context['task_instance'].xcom_pull(key='month', task_ids='fetch_monthly_data')
+    special_dates = context['task_instance'].xcom_pull(key='special_dates', task_ids='find_special_dates')
+    
+    if not special_dates:
+        raise ValueError("No special dates from previous task")
+    
+    # Prepare special dates for calendar (emoji only)
     calendar_special_dates = [
         {'day': sd['day'], 'emoji': sd['emoji']}
         for sd in special_dates
     ]
     
-    # Step 3: Generate and write monthly-calendar
     calendar_html = generate_monthly_calendar(year, month, calendar_special_dates)
     write_component('monthly-calendar', calendar_html)
     
-    # Step 4: Prepare special dates for list (with descriptions)
+    print(f"✓ Generated monthly-calendar component")
+
+
+def generate_special_dates_component(**context):
+    """Step 5: Generate and write special-dates component"""
+    month = context['task_instance'].xcom_pull(key='month', task_ids='fetch_monthly_data')
+    special_dates = context['task_instance'].xcom_pull(key='special_dates', task_ids='find_special_dates')
+    
+    if not special_dates:
+        raise ValueError("No special dates from previous task")
+    
+    # Prepare special dates for list (with descriptions)
     special_dates_data = [
         {
             'month': month,
@@ -268,16 +382,24 @@ def update_monthly_components(**context):
         for i, sd in enumerate(special_dates)
     ]
     
-    # Step 5: Generate and write special-dates
     special_dates_html = generate_special_dates(special_dates_data)
     write_component('special-dates', special_dates_html)
     
-    print(f"✓ Updated monthly components at {now.isoformat()}")
+    print(f"✓ Generated special-dates component")
+
+
+def generate_best_date_component(**context):
+    """Step 6: Generate and write best-date component"""
+    month = context['task_instance'].xcom_pull(key='month', task_ids='fetch_monthly_data')
+    best_day = context['task_instance'].xcom_pull(key='best_day', task_ids='find_special_dates')
     
-    # Push data to XCom
-    context['task_instance'].xcom_push(key='best_day', value=best_day)
-    context['task_instance'].xcom_push(key='special_dates', value=special_dates)
-    context['task_instance'].xcom_push(key='daily_scores', value=daily_scores)
+    if best_day is None:
+        raise ValueError("No best day from previous task")
+    
+    best_date_html = generate_best_date(month, best_day)
+    write_component('best-date', best_date_html)
+    
+    print(f"✓ Generated best-date component")
 
 
 # Define DAG
@@ -290,7 +412,34 @@ with DAG(
     tags=['monthly', 'calendar', 'kma', 'html'],
 ) as dag:
     
-    update_task = PythonOperator(
-        task_id='update_monthly_components',
-        python_callable=update_monthly_components,
+    fetch_task = PythonOperator(
+        task_id='fetch_monthly_data',
+        python_callable=fetch_monthly_data,
     )
+    
+    calculate_task = PythonOperator(
+        task_id='calculate_monthly_scores',
+        python_callable=calculate_monthly_scores,
+    )
+    
+    special_dates_task = PythonOperator(
+        task_id='find_special_dates',
+        python_callable=find_special_dates,
+    )
+    
+    calendar_component_task = PythonOperator(
+        task_id='generate_calendar_component',
+        python_callable=generate_calendar_component,
+    )
+    
+    special_dates_component_task = PythonOperator(
+        task_id='generate_special_dates_component',
+        python_callable=generate_special_dates_component,
+    )
+    
+    best_date_component_task = PythonOperator(
+        task_id='generate_best_date_component',
+        python_callable=generate_best_date_component,
+    )
+    
+    fetch_task >> calculate_task >> special_dates_task >> [calendar_component_task, special_dates_component_task, best_date_component_task]

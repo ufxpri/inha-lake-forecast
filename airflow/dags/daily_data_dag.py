@@ -180,36 +180,124 @@ def predict_hourly_beauty_scores():
     return hourly_predictions
 
 
-def update_daily_components(**context):
-    """
-    Main task: Update best-time and hourly-chart components
-    """
-    # Step 1: Predict hourly beauty scores for today
-    hourly_data = predict_hourly_beauty_scores()
+def fetch_hourly_data(**context):
+    """Step 1: Fetch yesterday's hourly weather data"""
+    hourly_data = fetch_yesterday_hourly_data()
     
-    print(f"✓ Predicted beauty scores for {len(hourly_data)} hours (7am-8pm)")
+    if not hourly_data:
+        logging.warning("No hourly data available")
+        raise ValueError("Failed to fetch hourly weather data")
     
-    # Step 2: Find best time
+    print(f"✓ Fetched {len(hourly_data)} hourly records")
+    
+    # Push to XCom
+    context['task_instance'].xcom_push(key='raw_hourly_data', value=hourly_data)
+    return hourly_data
+
+
+def calculate_hourly_scores(**context):
+    """Step 2: Calculate beauty scores for each hour"""
+    raw_data = context['task_instance'].xcom_pull(key='raw_hourly_data', task_ids='fetch_hourly_data')
+    
+    if not raw_data:
+        raise ValueError("No hourly data from previous task")
+    
+    hourly_predictions = []
+    
+    for item in raw_data:
+        try:
+            # Extract hour from timestamp
+            tm = item.get('tm', '')
+            hour = int(tm.split()[1].split(':')[0]) if ' ' in tm else 0
+            
+            # Filter: only include hours between 7 AM and 8 PM
+            if not (7 <= hour <= 20):
+                continue
+            
+            # Calculate beauty score
+            score = calculate_beauty_score(item)
+            
+            # Determine emoji based on score
+            if score >= 90:
+                emoji = '🤩'
+            elif score >= 80:
+                emoji = '😆'
+            elif score >= 70:
+                emoji = '😊'
+            elif score >= 60:
+                emoji = '🙂'
+            elif score >= 50:
+                emoji = '😌'
+            elif 7 <= hour <= 8:
+                emoji = '🌅'
+            elif 19 <= hour <= 20:
+                emoji = '🌆'
+            else:
+                emoji = '😴'
+            
+            hourly_predictions.append({
+                'hour': hour,
+                'score': score,
+                'emoji': emoji
+            })
+        except Exception as e:
+            logging.error(f"Error processing hourly item: {e}")
+            continue
+    
+    # Sort by hour
+    hourly_predictions.sort(key=lambda x: x['hour'])
+    
+    print(f"✓ Calculated beauty scores for {len(hourly_predictions)} hours (7am-8pm)")
+    
+    # Push to XCom
+    context['task_instance'].xcom_push(key='hourly_predictions', value=hourly_predictions)
+    return hourly_predictions
+
+
+def find_best_time(**context):
+    """Step 3: Find the best time of day"""
+    hourly_data = context['task_instance'].xcom_pull(key='hourly_predictions', task_ids='calculate_hourly_scores')
+    
+    if not hourly_data:
+        raise ValueError("No hourly predictions from previous task")
+    
     best_entry = max(hourly_data, key=lambda x: x['score'])
     best_hour = best_entry['hour']
     best_score = best_entry['score']
     
     print(f"✓ Best time today: {best_hour:02d}:00 (score: {best_score})")
     
-    # Step 3: Generate and write best-time
+    # Push to XCom
+    context['task_instance'].xcom_push(key='best_hour', value=best_hour)
+    context['task_instance'].xcom_push(key='best_score', value=best_score)
+    
+    return {'hour': best_hour, 'score': best_score}
+
+
+def generate_best_time_component(**context):
+    """Step 4: Generate and write best-time component"""
+    best_hour = context['task_instance'].xcom_pull(key='best_hour', task_ids='find_best_time')
+    
+    if best_hour is None:
+        raise ValueError("No best hour data from previous task")
+    
     best_time_html = generate_best_time(best_hour, 0)
     write_component('best-time', best_time_html)
     
-    # Step 4: Generate and write hourly-chart
+    print(f"✓ Generated best-time component")
+
+
+def generate_chart_component(**context):
+    """Step 5: Generate and write hourly-chart component"""
+    hourly_data = context['task_instance'].xcom_pull(key='hourly_predictions', task_ids='calculate_hourly_scores')
+    
+    if not hourly_data:
+        raise ValueError("No hourly data from previous task")
+    
     chart_html = generate_hourly_chart(hourly_data)
     write_component('hourly-chart', chart_html)
     
-    print(f"✓ Updated daily components at {datetime.now().isoformat()}")
-    
-    # Push data to XCom
-    context['task_instance'].xcom_push(key='best_hour', value=best_hour)
-    context['task_instance'].xcom_push(key='best_score', value=best_score)
-    context['task_instance'].xcom_push(key='hourly_data', value=hourly_data)
+    print(f"✓ Generated hourly-chart component")
 
 
 # Define DAG
@@ -222,7 +310,29 @@ with DAG(
     tags=['daily', 'hourly', 'kma', 'html'],
 ) as dag:
     
-    update_task = PythonOperator(
-        task_id='update_daily_components',
-        python_callable=update_daily_components,
+    fetch_task = PythonOperator(
+        task_id='fetch_hourly_data',
+        python_callable=fetch_hourly_data,
     )
+    
+    calculate_task = PythonOperator(
+        task_id='calculate_hourly_scores',
+        python_callable=calculate_hourly_scores,
+    )
+    
+    best_time_task = PythonOperator(
+        task_id='find_best_time',
+        python_callable=find_best_time,
+    )
+    
+    best_time_component_task = PythonOperator(
+        task_id='generate_best_time_component',
+        python_callable=generate_best_time_component,
+    )
+    
+    chart_component_task = PythonOperator(
+        task_id='generate_chart_component',
+        python_callable=generate_chart_component,
+    )
+    
+    fetch_task >> calculate_task >> best_time_task >> [best_time_component_task, chart_component_task]
