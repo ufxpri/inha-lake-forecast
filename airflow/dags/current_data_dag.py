@@ -13,12 +13,8 @@ from urllib.parse import quote
 import logging
 from openai import OpenAI
 import json
-from dotenv import load_dotenv
 from PIL import Image
 import io
-
-# Load environment variables from .env file
-load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
 # Add utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
@@ -40,7 +36,7 @@ default_args = {
 # KMA ASOS API Configuration
 API_URL = "http://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList"
 STN_ID = "112"  # 인천 지점
-SERVICE_KEY_RAW = "c51ff7c6232a4c5da9142dda7cfaa19a393b32eb90734a86baa46057dec1db7b"
+SERVICE_KEY_RAW = os.getenv('KMA_SERVICE_KEY', 'your_kma_service_key_here')
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')

@@ -34,7 +34,7 @@ default_args = {
 # KMA ASOS API Configuration
 API_URL = "http://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList"
 STN_ID = "112"  # 인천 지점
-SERVICE_KEY_RAW = "c51ff7c6232a4c5da9142dda7cfaa19a393b32eb90734a86baa46057dec1db7b"
+SERVICE_KEY_RAW = os.getenv('KMA_SERVICE_KEY', 'your_kma_service_key_here')
 
 # Weather phenomena penalties
 WEATHER_PHENOMENA_PENALTIES = {

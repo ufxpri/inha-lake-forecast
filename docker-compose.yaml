@@ -74,6 +74,9 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-openai python-dotenv pillow}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    # API Keys
+    KMA_SERVICE_KEY: ${KMA_SERVICE_KEY:-your_kma_service_key_here}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-your_openai_api_key_here}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
