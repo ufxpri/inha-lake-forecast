@@ -140,6 +140,10 @@ def predict_hourly_beauty_scores():
             tm = item.get('tm', '')
             hour = int(tm.split()[1].split(':')[0]) if ' ' in tm else 0
             
+            # Filter: only include hours between 7 AM and 8 PM
+            if not (7 <= hour <= 20):
+                continue
+            
             # Calculate beauty score
             score = calculate_beauty_score(item)
             
@@ -154,9 +158,9 @@ def predict_hourly_beauty_scores():
                 emoji = '🙂'
             elif score >= 50:
                 emoji = '😌'
-            elif 6 <= hour <= 8:
+            elif 7 <= hour <= 8:
                 emoji = '🌅'
-            elif 18 <= hour <= 20:
+            elif 19 <= hour <= 20:
                 emoji = '🌆'
             else:
                 emoji = '😴'
@@ -183,7 +187,7 @@ def update_daily_components(**context):
     # Step 1: Predict hourly beauty scores for today
     hourly_data = predict_hourly_beauty_scores()
     
-    print(f"✓ Predicted beauty scores for 24 hours")
+    print(f"✓ Predicted beauty scores for {len(hourly_data)} hours (7am-8pm)")
     
     # Step 2: Find best time
     best_entry = max(hourly_data, key=lambda x: x['score'])

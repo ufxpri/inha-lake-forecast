@@ -34,8 +34,7 @@ def generate_hero_image(image_path: str = "/images/latest.jpg") -> str:
     return f'''<img src="{image_path}" alt="인경호 현재 모습" class="hero-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 <div style="display:none; width:100%; height:100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); align-items:center; justify-content:center; color:white; font-size:24px; font-weight:bold;">
     📷 인경호 이미지
-</div>
-<div class="user-badge">👤</div>'''
+</div>'''
 
 
 def generate_best_time(best_hour: int, best_minute: int) -> str:
@@ -54,27 +53,24 @@ def generate_best_time(best_hour: int, best_minute: int) -> str:
 
 def generate_hourly_chart(hourly_data: List[Dict[str, Any]]) -> str:
     """
-    Generate hourly-chart component for 24 hours (00:00 to 23:00)
+    Generate hourly-chart component for filtered hours (7am-8pm by default)
     
     Args:
-        hourly_data: List of 24 dicts with keys: 'hour', 'score', 'emoji'
-                     Example: [{'hour': 0, 'score': 40, 'emoji': '😴'}, ...]
-                     hour should be 0-23
+        hourly_data: List of dicts with keys: 'hour', 'score', 'emoji'
+                     Example: [{'hour': 7, 'score': 75, 'emoji': '🌅'}, ...]
     
     Returns:
         HTML string for hourly chart
     """
-    if not hourly_data or len(hourly_data) != 24:
-        # Default fallback - generate 24 hours with sample data
+    if not hourly_data:
+        # Default fallback - generate 7am to 8pm with sample data
         import random
         emoji_map = {
-            range(0, 6): '😴',    # Night
-            range(6, 9): '🌅',    # Early morning
+            range(7, 9): '🌅',    # Early morning
             range(9, 12): '😊',   # Morning
             range(12, 15): '🙂',  # Noon
             range(15, 18): '😆',  # Afternoon
             range(18, 21): '🌆',  # Evening
-            range(21, 24): '😌',  # Night
         }
         
         def get_emoji(hour):
@@ -84,8 +80,8 @@ def generate_hourly_chart(hourly_data: List[Dict[str, Any]]) -> str:
             return '😊'
         
         hourly_data = [
-            {'hour': h, 'score': random.randint(30, 100), 'emoji': get_emoji(h)}
-            for h in range(24)
+            {'hour': h, 'score': random.randint(40, 90), 'emoji': get_emoji(h)}
+            for h in range(7, 21)  # 7am to 8pm
         ]
     
     # Find the best score for highlighting
@@ -240,14 +236,14 @@ def generate_special_dates(dates_data: List[Dict[str, Any]]) -> str:
     return '\n\n'.join(cards)
 
 
-def write_component(component_name: str, content: str, output_dir: str = "/usr/share/nginx/html/components"):
+def write_component(component_name: str, content: str, output_dir: str = "/opt/airflow/nginx_html/components"):
     """
     Write component HTML to file
     
     Args:
         component_name: Name of the component (e.g., 'current-status')
         content: HTML content to write
-        output_dir: Directory to write to
+        output_dir: Directory to write to (default: /opt/airflow/nginx_html/components)
     """
     import os
     

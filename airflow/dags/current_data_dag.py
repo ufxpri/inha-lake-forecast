@@ -11,6 +11,14 @@ import os
 import requests
 from urllib.parse import quote
 import logging
+from openai import OpenAI
+import json
+from dotenv import load_dotenv
+from PIL import Image
+import io
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
 # Add utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'utils'))
@@ -33,6 +41,10 @@ default_args = {
 API_URL = "http://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList"
 STN_ID = "112"  # 인천 지점
 SERVICE_KEY_RAW = "c51ff7c6232a4c5da9142dda7cfaa19a393b32eb90734a86baa46057dec1db7b"
+
+# OpenAI Configuration
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 # Weather phenomena penalties
 WEATHER_PHENOMENA_PENALTIES = {
@@ -147,6 +159,88 @@ def get_weather_condition(cloud_amount, phenomena):
         return '매우 흐림', '🌫️'
 
 
+def generate_scenario_prompt(weather_item, condition):
+    """Generate scenario prompt based on weather data"""
+    scenario = {
+        "view_type": "panoramic eye-level view",
+        "tree_status": "vibrant autumn foliage in deep red and gold colors",
+        "flower_status": "fallen maple leaves scattered on the ground",
+        "water_status": "calm water perfectly reflecting the sunset and trees",
+        "duck_status": "sleeping ducks huddled together on the grassy bank",
+        "weather": "warm golden hour sunset casting long shadows",
+        "extra_beautiful_elements": "glowing traditional lanterns hanging from trees creating a cozy atmosphere"
+    }
+    
+    # Adjust scenario based on weather condition
+    if '비' in condition or '눈' in condition:
+        scenario["weather"] = "gentle rain creating ripples on the lake surface"
+        scenario["extra_beautiful_elements"] = "misty atmosphere with soft lighting through rain clouds"
+    elif '안개' in condition:
+        scenario["weather"] = "mystical morning fog rolling over the water"
+        scenario["extra_beautiful_elements"] = "ethereal fog creating dreamy silhouettes of trees"
+    elif '맑음' in condition:
+        scenario["weather"] = "bright clear sky with perfect lighting"
+        scenario["extra_beautiful_elements"] = "crystal clear reflections and vibrant colors"
+    
+    return json.dumps(scenario, ensure_ascii=False)
+
+
+def generate_openai_image(**context):
+    """Generate image using OpenAI DALL-E"""
+    # Get weather data from XCom
+    weather_condition = context['task_instance'].xcom_pull(key='weather_condition', task_ids='update_current_components')
+    
+    if not weather_condition:
+        logging.warning("No weather condition data available")
+        return
+    
+    # Generate scenario prompt
+    weather_item = fetch_current_weather()
+    scenario_prompt = generate_scenario_prompt(weather_item, weather_condition)
+    
+    prompt = f"Beautiful scenic view of Inha Lake based on this scenario: {scenario_prompt}"
+    
+    try:
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1
+        )
+        
+        image_url = response.data[0].url
+        
+        # Download and process image
+        img_response = requests.get(image_url)
+        if img_response.status_code == 200:
+            # Open image and crop to 16:9 ratio from center
+            img = Image.open(io.BytesIO(img_response.content))
+            width, height = img.size
+            
+            # Calculate 16:9 crop dimensions
+            target_ratio = 16 / 9
+            current_ratio = width / height
+            
+            if current_ratio > target_ratio:
+                # Image is wider, crop width
+                new_width = int(height * target_ratio)
+                left = (width - new_width) // 2
+                crop_box = (left, 0, left + new_width, height)
+            else:
+                # Image is taller, crop height
+                new_height = int(width / target_ratio)
+                top = (height - new_height) // 2
+                crop_box = (0, top, width, top + new_height)
+            
+            cropped_img = img.crop(crop_box)
+            cropped_img.save('/opt/airflow/nginx_html/images/latest.jpg', 'JPEG', quality=95)
+            print(f"✓ Generated and saved 16:9 AI image at {datetime.now().isoformat()}")
+        
+    except Exception as e:
+        logging.error(f"Failed to generate OpenAI image: {e}")
+
+
 def update_current_components(**context):
     """
     Main task: Update current-status and hero-image components
@@ -178,7 +272,7 @@ def update_current_components(**context):
     status_html = generate_current_status(weather_data)
     write_component('current-status', status_html)
     
-    # Step 5: Generate and write hero-image
+    # Step 5: Generate and write hero-image  
     hero_html = generate_hero_image('/images/latest.jpg')
     write_component('hero-image', hero_html)
     
@@ -203,3 +297,10 @@ with DAG(
         task_id='update_current_components',
         python_callable=update_current_components,
     )
+    
+    generate_image_task = PythonOperator(
+        task_id='generate_openai_image',
+        python_callable=generate_openai_image,
+    )
+    
+    update_task >> generate_image_task

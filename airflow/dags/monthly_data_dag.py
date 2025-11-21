@@ -84,7 +84,7 @@ def calculate_beauty_score(item):
 
 
 def fetch_last_year_month_data(year, month):
-    """Fetch last year's same month data from KMA ASOS API"""
+    """Fetch last year's same month data from KMA ASOS API (noon data only to stay under 1000 limit)"""
     _, num_days = monthrange(year, month)
     
     start_dt = f"{year}{month:02d}01"
@@ -92,17 +92,19 @@ def fetch_last_year_month_data(year, month):
     
     service_key = quote(SERVICE_KEY_RAW, safe='')
     
+    # Request only noon (12:00) data for each day to stay under 1000 record limit
+    # This gives us 30-31 records instead of 720-744
     params = {
         'serviceKey': service_key,
-        'numOfRows': '1000',  # Request enough for full month
+        'numOfRows': '100',
         'pageNo': '1',
         'dataType': 'JSON',
         'dataCd': 'ASOS',
         'dateCd': 'HR',
         'startDt': start_dt,
         'endDt': end_dt,
-        'startHh': '00',
-        'endHh': '23',
+        'startHh': '12',  # Only fetch noon data
+        'endHh': '12',
         'stnIds': STN_ID
     }
     
