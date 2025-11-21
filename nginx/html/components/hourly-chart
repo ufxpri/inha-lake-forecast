@@ -1,0 +1,35 @@
+<div class="chart-item">
+    <div class="emoji-face">😯</div>
+    <div class="bar" style="height: 40%; background-color: #ccc;"></div>
+    <div class="time-label">15:00</div>
+</div>
+<div class="chart-item active">
+    <div class="emoji-face">😆</div>
+    <div class="bar" style="height: 100%; background-color: #3D6AFE;"></div>
+    <div class="time-label">15:10</div>
+</div>
+<div class="chart-item">
+    <div class="emoji-face">😊</div>
+    <div class="bar" style="height: 70%; background-color: #ccc;"></div>
+    <div class="time-label">15:20</div>
+</div>
+<div class="chart-item">
+    <div class="emoji-face">😰</div>
+    <div class="bar" style="height: 30%; background-color: #ccc;"></div>
+    <div class="time-label">15:30</div>
+</div>
+<div class="chart-item">
+    <div class="emoji-face">🙂</div>
+    <div class="bar" style="height: 80%; background-color: #ccc;"></div>
+    <div class="time-label">15:40</div>
+</div>
+<div class="chart-item">
+    <div class="emoji-face">😥</div>
+    <div class="bar" style="height: 50%; background-color: #ccc;"></div>
+    <div class="time-label">15:50</div>
+</div>
+<div class="chart-item">
+    <div class="emoji-face">😋</div>
+    <div class="bar" style="height: 80%; background-color: #ccc;"></div>
+    <div class="time-label">16:00</div>
+</div>

@@ -1,0 +1,14 @@
+<div class="info-card yellow">
+    <span class="card-date">11월 14일</span>
+    <span class="card-desc">가장 맑은 날 ✨</span>
+</div>
+
+<div class="info-card pink">
+    <span class="card-date">11월 23일</span>
+    <span class="card-desc">가장 구름 없는 날 🪁</span>
+</div>
+
+<div class="info-card yellow">
+    <span class="card-date">11월 20일</span>
+    <span class="card-desc">가장 따뜻한 날 😍</span>
+</div>
