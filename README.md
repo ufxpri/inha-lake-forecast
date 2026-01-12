@@ -220,6 +220,10 @@ inha-lake-forecast/
 - RESTful API 설계
 - 데이터베이스 최적화
 
+## 🖼️ 화면 디자인
+<img width="375" height="1527" alt="image" src="https://github.com/user-attachments/assets/b1286624-afad-40b2-9d87-29092c6cfb0f" />
+<img width="375" height="1204" alt="image2" src="https://github.com/user-attachments/assets/4e78152c-1dbd-482d-96e1-71bb8f832353" />
+
 ## 🔮 향후 개선사항
 
 - **사용자 이미지 업로드**: 사용자가 직접 촬영한 인경호 이미지 업로드 기능
